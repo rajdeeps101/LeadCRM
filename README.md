@@ -38,7 +38,7 @@ These tests exercise lead-readiness and document-review findings directly, witho
 
 ## Change gate
 
-For each change, start a new `feature/<change-slug>` branch from `main`, run unit and Quick functional tests before editing, add or update a functional test alongside behavior changes, and rerun the tests after editing. Pushing a feature branch runs unit + Quick checks, creates a PR, runs unit + Sanity checks, requests Copilot review, and queues auto-merge. The `main` branch requires a passing **CRM pipeline / verify** check and one approving review. Copilot approvals are disabled by default; enable **Allow Copilot to approve pull requests** and **Allow Copilot approvals to count toward merge requirements** in the repository's Copilot code review settings for fully automatic merges. Otherwise, a human approval is still required.
+For each change, start a new `feature/<change-slug>` branch from `main`, run unit and Quick functional tests before editing, add or update a functional test alongside behavior changes, and rerun the tests after editing. Pushing a feature branch runs unit + Quick checks, creates a PR, runs unit + Sanity checks, requests Copilot review, and queues auto-merge. The `main` branch requires a passing **CRM pipeline / verify** check and one approving review. If Copilot code review is unavailable for the account or organization, the workflow warns and waits for human approval. For fully automatic approval, enable Copilot code review and the repository settings **Allow Copilot to approve pull requests** and **Allow Copilot approvals to count toward merge requirements**.
 
 ```sh
 dotnet test UnitTestCases/LeadCrm.UnitTests.csproj

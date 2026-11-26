@@ -81,7 +81,7 @@ jobs:
               --base main \
               --head "$branch" \
               --title "$title" \
-              --body "Automated PR. Unit and Quick checks passed before opening; Sanity validation and Copilot review are required before auto-merge."
+              --body "Automated PR. Unit, Quick, and Sanity validation run before auto-merge. An approving review is required; if Copilot review is unavailable, a human must approve."
             pr_number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
           fi
           if [ -z "$pr_number" ]; then
@@ -112,6 +112,8 @@ jobs:
             printf '%s\n' "$response"
           elif printf '%s' "$response" | grep -Eq 'HTTP 409|409 Conflict'; then
             echo "A Copilot review is already pending."
+          elif printf '%s' "$response" | grep -q '"failure_reason":"ACTOR_INELIGIBLE"'; then
+            echo "::warning::Copilot code review is unavailable for this account or organization. The required human approval still gates auto-merge."
           else
             printf '%s\n' "$response" >&2
             exit "$status"
