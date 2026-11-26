@@ -1,36 +1,127 @@
-name: CRM tests
+name: CRM pipeline
 
 on:
   push:
+    branches:
+      - main
+      - feature/**
   pull_request:
+    branches:
+      - main
+    types: [opened, reopened]
   workflow_dispatch:
     inputs:
       suite:
-        description: Test suite to run
+        description: Functional test suite to run
         type: choice
         options:
           - Quick
           - Sanity
           - Regression
-        default: Quick
+        default: Regression
+
+permissions:
+  contents: read
 
 jobs:
-  test:
+  verify:
+    name: verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore test project
-        run: dotnet restore FunctionalTestCases/LeadCrm.Tests.csproj
-
       - name: Run unit tests
-        run: dotnet test UnitTestCases/LeadCrm.UnitTests.csproj --no-restore
+        run: dotnet test UnitTestCases/LeadCrm.UnitTests.csproj --logger 'console;verbosity=minimal'
 
-      - name: Run selected test suite
-        run: dotnet test FunctionalTestCases/LeadCrm.Tests.csproj --no-restore -p:TestSuite=${{ github.event_name == 'workflow_dispatch' && inputs.suite || 'Quick' }}
+      - name: Run Quick functional suite
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.suite == 'Quick')
+        run: dotnet test FunctionalTestCases/LeadCrm.Tests.csproj -p:TestSuite=Quick --logger 'console;verbosity=minimal'
+
+      - name: Require functional tests for application changes
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+        run: |
+          git fetch origin main --quiet
+          changed_files="$(git diff --name-only origin/main...HEAD)"
+          application_changed=false
+          while IFS= read -r file; do
+            case "$file" in
+              FunctionalTestCases/*|UnitTestCases/*|.github/*) ;;
+              *.cs|wwwroot/*) application_changed=true ;;
+            esac
+          done <<< "$changed_files"
+          if [ "$application_changed" = true ]; then
+            if ! printf '%s\n' "$changed_files" | grep -Eq '^FunctionalTestCases/.*\.cs$'; then
+              echo "::error::Application changes require a new or updated functional test in FunctionalTestCases/."
+              exit 1
+            fi
+          fi
+
+      - name: Create or find pull request
+        id: create_pr
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="$GITHUB_REF_NAME"
+          pr_number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
+          if [ -z "$pr_number" ]; then
+            title="$(git log -1 --pretty=%s)"
+            gh pr create \
+              --base main \
+              --head "$branch" \
+              --title "$title" \
+              --body "Automated PR. Unit, Quick, and Sanity validation run before auto-merge. An approving review is required; if Copilot review is unavailable, a human must approve."
+            pr_number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
+          fi
+          if [ -z "$pr_number" ]; then
+            echo "::error::Could not find or create a pull request for $branch."
+            exit 1
+          fi
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Run Sanity functional suite
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/')) || (github.event_name == 'workflow_dispatch' && inputs.suite == 'Sanity')
+        run: dotnet test FunctionalTestCases/LeadCrm.Tests.csproj -p:TestSuite=Sanity --logger 'console;verbosity=minimal'
+
+      - name: Run Regression functional suite
+        if: github.event_name == 'workflow_dispatch' && inputs.suite == 'Regression'
+        run: dotnet test FunctionalTestCases/LeadCrm.Tests.csproj -p:TestSuite=Regression --logger 'console;verbosity=minimal'
+
+      - name: Request Copilot code review
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || steps.create_pr.outputs.number }}
+        run: |
+          set +e
+          response="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/copilot-code-review" 2>&1)"
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            printf '%s\n' "$response"
+          elif printf '%s' "$response" | grep -Eq 'HTTP 409|409 Conflict'; then
+            echo "A Copilot review is already pending."
+          elif printf '%s' "$response" | grep -q '"failure_reason":"ACTOR_INELIGIBLE"'; then
+            echo "::warning::Copilot code review is unavailable for this account or organization. The required human approval still gates auto-merge."
+          else
+            printf '%s\n' "$response" >&2
+            exit "$status"
+          fi
+
+      - name: Queue auto-merge
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/feature/'))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || steps.create_pr.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --auto --squash --repo "$GITHUB_REPOSITORY"
