@@ -1,0 +1,73 @@
+version: 1
+project: lead-crm
+architecture_status: config_driven_local_agent_runtime
+
+runtime:
+  provider: local-rules
+  configuration_source: appsettings.json
+  configured_workflows: true
+  orchestration: in_process_agent_orchestrator
+  external_model_calls: true
+  policy_source: compiled_in_application
+  max_handoffs_per_task: 2
+  retry_attempts: 2
+  require_idempotency_for_writes: true
+
+data_handling:
+  contains_personal_data: true
+  document_storage: private_local_app_data
+  send_personal_data_to_external_provider: true
+  allow_document_processing: true
+  document_processing_scope: local_pdf_structure_check_and_google_gemini_pdf_ocr_full_name_check
+  external_data_scope: pdf_contents_and_lead_full_name_for_ocr
+  do_not_send_original_pdf: false
+  external_document_processing_requires_approval: true
+  external_document_processing_approval_mechanism: upload_ui_confirmation
+  log_document_contents: false
+  log_secrets: false
+
+approval:
+  duplicate_email_update:
+    required: true
+    mechanism: explicit_operator_confirmation
+  lead_status_change:
+    required: true
+  document_verification:
+    required: true
+    applies_to: jpg_png_and_pdfs_without_a_full_name_match
+    agent_may_recommend: true
+    agent_may_persist_status: false
+  pdf_validation:
+    structural_failure: reject_upload
+    matching_provider: google_gemini
+    lead_full_name_match: automatically_mark_verified
+    lead_name_mismatch: keep_pending_for_human_review
+    text_unavailable: keep_pending_for_human_review
+    may_mark_verified_on_full_name_match: true
+  outbound_communication:
+    required: true
+    agent_may_draft: true
+    agent_may_send: false
+
+agents:
+  coordinator:
+    may: [route_tasks, enforce_rules, present_recommendations]
+    may_not: [bypass_approval, mutate_storage]
+  lead_intake:
+    may: [normalize_fields, validate_inputs, detect_duplicate_email]
+    may_not: [update_duplicate_without_confirmation]
+  lead_qualification:
+    may: [score_with_evidence, identify_missing_information]
+    may_not: [invent_facts, change_lead_status]
+  document_review:
+    may: [recommend_review_outcome, cite_document_evidence]
+    may_not: [mark_document_verified, mark_document_rejected, distribute_document]
+  pdf_validation:
+    may: [parse_pdf_structure, send_pdf_and_lead_full_name_to_google_gemini_for_ocr, mark_verified_on_full_name_match]
+    may_not: [log_pdf_or_ocr_contents]
+quality:
+  recommendations_require_evidence: true
+  separate_facts_from_inferences: true
+  preserve_existing_lead_id_status_and_created_at_on_email_update: true
+  verify_persisted_result_after_approved_write: true
+  fail_closed_when_policy_or_identity_is_unclear: true

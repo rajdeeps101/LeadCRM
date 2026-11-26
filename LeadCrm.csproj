@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>35a5a45c-9899-4594-9be6-91b50b3eff61</UserSecretsId>
+    <DefaultItemExcludes>$(DefaultItemExcludes);FunctionalTestCases/**;UnitTestCases/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="FunctionalTestCases/**/*.cs" />
+    <Compile Remove="UnitTestCases/**/*.cs" />
+    <PackageReference Include="PdfPig" Version="0.1.17-alpha-202611100027-21de1" />
+  </ItemGroup>
+
+</Project>

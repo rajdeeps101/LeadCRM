@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lead CRM application</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: #172033;
+      background: #f3f6fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { margin: 0; }
+
+    header {
+      padding: 22px max(24px, calc((100% - 1120px) / 2));
+      color: white;
+      background: #183b70;
+    }
+
+    header h1 { margin: 0; font-size: 1.4rem; }
+    header p { margin: 5px 0 0; color: #d3e2f8; font-size: .92rem; }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+      gap: 22px;
+      max-width: 1168px;
+      margin: 28px auto;
+      padding: 0 24px;
+    }
+
+    section {
+      background: white;
+      border: 1px solid #e1e7f0;
+      border-radius: 12px;
+      box-shadow: 0 4px 18px #183b700d;
+    }
+
+    .form-card { padding: 22px; align-self: start; }
+    .list-card { padding: 22px; min-width: 0; }
+    h2 { margin: 0 0 18px; font-size: 1.08rem; }
+    .document-fieldset { margin: 18px 0 0; padding: 12px; border: 1px solid #ccd5e2; border-radius: 7px; }
+    .document-fieldset legend { padding: 0 5px; font-size: .84rem; font-weight: 650; }
+    .document-fieldset p { margin: 0 0 8px; color: #68768b; font-size: .78rem; }
+
+    label { display: block; margin: 14px 0 6px; font-size: .84rem; font-weight: 600; }
+    input, select, button {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #ccd5e2;
+      border-radius: 7px;
+      padding: 8px 10px;
+      font: inherit;
+      background: white;
+    }
+
+    input:focus, select:focus { outline: 2px solid #8bb9f1; border-color: #3478c8; }
+    button { margin-top: 18px; color: white; font-weight: 650; border: 0; background: #245c9e; cursor: pointer; }
+    button:hover { background: #194879; }
+    button:disabled { opacity: .65; cursor: wait; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 14px; }
+    .toolbar input, .toolbar select { min-width: 0; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #e8edf4; vertical-align: middle; }
+    th { color: #526179; font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
+    td { font-size: .88rem; }
+    td select { min-width: 118px; min-height: 34px; padding: 5px 8px; }
+    .document-list { min-width: 230px; }
+    .document-item { padding: 8px 0; border-bottom: 1px solid #e8edf4; }
+    .document-item:last-child { border-bottom: 0; }
+    .document-item a { overflow-wrap: anywhere; }
+    .document-meta { margin: 3px 0 7px; color: #68768b; font-size: .75rem; }
+    .document-review { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(120px, 1.5fr) auto; gap: 5px; }
+    .document-review select, .document-review input, .document-upload input { min-width: 0; min-height: 32px; padding: 5px 7px; font-size: .76rem; }
+    .document-review button, .document-upload button { width: auto; min-height: 32px; margin: 0; padding: 5px 8px; font-size: .76rem; }
+    .document-upload { display: grid; gap: 6px; margin-top: 8px; }
+    .document-upload input[type="file"] { width: 100%; }
+    .document-message { min-height: 1em; margin-top: 4px; font-size: .76rem; }
+    .company, .muted { color: #68768b; }
+    .company { margin-top: 3px; font-size: .78rem; }
+    .empty, .message { color: #68768b; padding: 18px 4px; }
+    .message { padding: 10px 0 0; font-size: .85rem; }
+    .error { color: #b42318; }
+    .success { color: #18764a; }
+    .count { margin-left: auto; align-self: center; color: #68768b; font-size: .84rem; white-space: nowrap; }
+
+    @media (max-width: 780px) {
+      main { grid-template-columns: 1fr; margin-top: 18px; }
+      .toolbar { flex-wrap: wrap; }
+      .toolbar input { flex: 1 1 100%; }
+      .toolbar select { flex: 1; }
+      .count { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lead CRM application</h1>
+    <p>Capture and manage your incoming leads</p>
+  </header>
+  <main>
+    <section class="form-card">
+      <h2>Add a lead</h2>
+      <form id="lead-form">
+        <label for="firstName">First name *</label>
+        <input id="firstName" name="firstName" autocomplete="given-name" required>
+        <label for="lastName">Last name *</label>
+        <input id="lastName" name="lastName" autocomplete="family-name" required>
+        <label for="email">Email *</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel">
+        <label for="company">Company</label>
+        <input id="company" name="company" autocomplete="organization">
+        <label for="source">Lead source</label>
+        <input id="source" name="source" placeholder="e.g. Website">
+        <fieldset class="document-fieldset">
+          <legend>Add document</legend>
+          <p>Optional. PDF, JPG, or PNG, up to 10 MB. PDFs up to 10 pages are sent to Google Gemini for OCR and full-name validation; you will be asked to confirm.</p>
+          <input id="lead-document" name="document" type="file"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            aria-label="Add a PDF, JPG, or PNG document">
+        </fieldset>
+        <button id="submit-button" type="submit">Save lead</button>
+        <div id="form-message" class="message" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="list-card">
+      <h2>Leads</h2>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search name, email or company" aria-label="Search leads">
+        <select id="status-filter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+        </select>
+        <span id="lead-count" class="count"></span>
+      </div>
+      <div id="list-message" class="message" role="status" aria-live="polite"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Lead</th><th>Contact</th><th>Source</th><th>Status</th><th>Added</th><th>Documents</th></tr>
+          </thead>
+          <tbody id="lead-rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const statuses = ["New", "Contacted", "Qualified", "Converted", "Lost"];
+    const documentStatuses = ["Pending", "Verified", "Rejected"];
+    const form = document.querySelector("#lead-form");
+    const formMessage = document.querySelector("#form-message");
+    const listMessage = document.querySelector("#list-message");
+    const rows = document.querySelector("#lead-rows");
+    const search = document.querySelector("#search");
+    const statusFilter = document.querySelector("#status-filter");
+    const leadCount = document.querySelector("#lead-count");
+    let requestToken;
+
+    async function getRequestToken() {
+      if (requestToken) return requestToken;
+      const response = await fetch("/api/antiforgery");
+      if (!response.ok) throw new Error("Unable to prepare a secure document upload.");
+      const result = await response.json();
+      requestToken = result.requestToken;
+      return requestToken;
+    }
+
+    for (const status of statuses) {
+      const option = document.createElement("option");
+      option.value = status;
+      option.textContent = status;
+      statusFilter.append(option);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function showMessage(element, text, kind) {
+      element.textContent = text;
+      element.className = `message ${kind || ""}`;
+    }
+
+    function confirmPdfProcessing(file) {
+      return !file || !file.name.toLowerCase().endsWith(".pdf") || window.confirm(
+        "This PDF will be sent to Google Gemini for OCR and full-name validation. Continue only if you are authorized to share it."
+      );
+    }
+
+    async function loadLeads() {
+      listMessage.textContent = "";
+      const params = new URLSearchParams();
+      if (search.value.trim()) params.set("search", search.value.trim());
+      if (statusFilter.value) params.set("status", statusFilter.value);
+
+      try {
+        const response = await fetch(`/api/leads?${params}`);
+        if (!response.ok) throw new Error("Unable to load leads.");
+        const leads = await response.json();
+        leadCount.textContent = `${leads.length} ${leads.length === 1 ? "lead" : "leads"}`;
+        rows.innerHTML = leads.length ? leads.map(lead => `
+          <tr>
+            <td>
+              <strong>${escapeHtml(lead.firstName)} ${escapeHtml(lead.lastName)}</strong>
+              ${lead.company ? `<div class="company">${escapeHtml(lead.company)}</div>` : ""}
+            </td>
+            <td>${escapeHtml(lead.email)}${lead.phone ? `<div class="company">${escapeHtml(lead.phone)}</div>` : ""}</td>
+            <td>${escapeHtml(lead.source || "—")}</td>
+            <td>
+              <select aria-label="Status for ${escapeHtml(lead.firstName)} ${escapeHtml(lead.lastName)}"
+                data-lead-id="${escapeHtml(lead.id)}">
+                ${statuses.map(status => `<option value="${status}" ${status === lead.status ? "selected" : ""}>${status}</option>`).join("")}
+              </select>
+            </td>
+            <td>${new Date(lead.createdAt).toLocaleDateString()}</td>
+            <td class="document-list">
+              ${(lead.documents || []).map(document => `
+                <div class="document-item">
+                  <a href="/api/leads/${encodeURIComponent(lead.id)}/documents/${encodeURIComponent(document.id)}/file"
+                    target="_blank" rel="noopener">${escapeHtml(document.fileName)}</a>
+                  <div class="document-meta">${escapeHtml(document.status)} · ${formatBytes(document.sizeBytes)} · ${new Date(document.submittedAt).toLocaleDateString()}</div>
+                  ${document.validationStatus ? `<div class="document-meta">PDF validation: ${escapeHtml(document.validationStatus)} — ${escapeHtml(document.validationMessage)}</div>` : ""}
+                  <form class="document-review" data-lead-id="${escapeHtml(lead.id)}" data-document-id="${escapeHtml(document.id)}">
+                    <select name="status" aria-label="Review status for ${escapeHtml(document.fileName)}">
+                      ${documentStatuses.map(status => `<option value="${status}" ${status === document.status ? "selected" : ""}>${status}</option>`).join("")}
+                    </select>
+                    <input name="note" maxlength="1000" value="${escapeHtml(document.reviewNote || "")}" placeholder="Review note" aria-label="Review note">
+                    <button type="submit">Save</button>
+                  </form>
+                </div>`).join("")}
+              <form class="document-upload" data-lead-id="${escapeHtml(lead.id)}">
+                <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required aria-label="Choose a PDF, JPG, or PNG for ${escapeHtml(lead.firstName)} ${escapeHtml(lead.lastName)}">
+                <button type="submit">Upload document</button>
+                <div class="document-message" role="status" aria-live="polite"></div>
+              </form>
+            </td>
+          </tr>`).join("") : `<tr><td class="empty" colspan="6">No leads found. Add your first lead using the form.</td></tr>`;
+      } catch (error) {
+        showMessage(listMessage, error.message, "error");
+      }
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const documentFile = form.querySelector("#lead-document").files[0];
+      if (!confirmPdfProcessing(documentFile)) {
+        showMessage(formMessage, "No changes made. The PDF was not sent.");
+        return;
+      }
+
+      const button = document.querySelector("#submit-button");
+      button.disabled = true;
+      showMessage(formMessage, "Saving lead…");
+
+      const lead = Object.fromEntries(
+        [...new FormData(form).entries()].filter(([name]) => name !== "document")
+      );
+      let savedLead = null;
+      try {
+        const lookupParams = new URLSearchParams({ search: lead.email.trim() });
+        const lookupResponse = await fetch(`/api/leads?${lookupParams}`);
+        if (!lookupResponse.ok) throw new Error("Could not check for an existing lead.");
+        const matches = await lookupResponse.json();
+        const existingLead = matches.find(
+          candidate => candidate.email.toLowerCase() === lead.email.trim().toLowerCase()
+        );
+
+        if (existingLead && !window.confirm(
+          `A lead with email ID ${existingLead.email} already exists. Do you want to update it?`
+        )) {
+          showMessage(formMessage, "No changes made. The existing lead was left unchanged.");
+          return;
+        }
+
+        const response = await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(lead)
+        });
+        if (!response.ok) {
+          const result = await response.json();
+          const detail = result.errors
+            ? Object.values(result.errors).flat().join(" ")
+            : result.detail || "Could not save this lead.";
+          throw new Error(detail);
+        }
+        savedLead = await response.json();
+        if (documentFile) {
+          const documentBody = new FormData();
+          documentBody.append("file", documentFile);
+          const uploadResponse = await fetch(
+            `/api/leads/${encodeURIComponent(savedLead.id)}/documents`,
+            {
+              method: "POST",
+              headers: { "X-CSRF-TOKEN": await getRequestToken() },
+              body: documentBody
+            }
+          );
+          if (!uploadResponse.ok) {
+            const result = await uploadResponse.json();
+            const detail = result.errors
+              ? Object.values(result.errors).flat().join(" ")
+              : result.detail || "Could not upload the document.";
+            throw new Error(`Lead saved, but document upload failed: ${detail}`);
+          }
+        }
+
+        form.reset();
+        const leadMessage = response.status === 201 ? "Lead created" : "Existing lead updated";
+        showMessage(
+          formMessage,
+          `${leadMessage}${documentFile ? " and document uploaded for processing." : "."}`,
+          "success"
+        );
+        await loadLeads();
+      } catch (error) {
+        if (savedLead) await loadLeads();
+        showMessage(formMessage, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    rows.addEventListener("change", async event => {
+      const select = event.target.closest("select[data-lead-id]");
+      if (!select) return;
+      select.disabled = true;
+      try {
+        const response = await fetch(`/api/leads/${select.dataset.leadId}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: select.value })
+        });
+        if (!response.ok) throw new Error("Could not update lead status.");
+        await loadLeads();
+      } catch (error) {
+        showMessage(listMessage, error.message, "error");
+        select.disabled = false;
+      }
+    });
+
+    function formatBytes(size) {
+      if (size < 1024) return `${size} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`;
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    rows.addEventListener("submit", async event => {
+      const form = event.target;
+      if (!form.matches(".document-upload, .document-review")) return;
+      event.preventDefault();
+      if (form.matches(".document-upload")) {
+        const selectedFile = form.querySelector('input[type="file"]').files[0];
+        if (!confirmPdfProcessing(selectedFile)) return;
+      }
+
+      const button = form.querySelector("button");
+      const message = form.querySelector(".document-message");
+      button.disabled = true;
+      try {
+        const leadId = encodeURIComponent(form.dataset.leadId);
+        const documentId = encodeURIComponent(form.dataset.documentId || "");
+        let response;
+        if (form.matches(".document-upload")) {
+          const fileInput = form.querySelector('input[type="file"]');
+          if (!fileInput.files.length) throw new Error("Choose a document to upload.");
+          const body = new FormData();
+          body.append("file", fileInput.files[0]);
+          response = await fetch(`/api/leads/${leadId}/documents`, {
+            method: "POST",
+            headers: { "X-CSRF-TOKEN": await getRequestToken() },
+            body
+          });
+        } else {
+          const values = new FormData(form);
+          response = await fetch(`/api/leads/${leadId}/documents/${documentId}/review`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: values.get("status"), note: values.get("note") })
+          });
+        }
+
+        if (!response.ok) {
+          const result = await response.json();
+          const detail = result.errors
+            ? Object.values(result.errors).flat().join(" ")
+            : result.detail || "The document request failed.";
+          throw new Error(detail);
+        }
+        await loadLeads();
+      } catch (error) {
+        if (message) message.textContent = error.message;
+        else         showMessage(listMessage, error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    let searchTimer;
+    search.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadLeads, 180);
+    });
+    statusFilter.addEventListener("change", loadLeads);
+    loadLeads();
+  </script>
+</body>
+</html>

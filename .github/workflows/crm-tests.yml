@@ -1,0 +1,36 @@
+name: CRM tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Test suite to run
+        type: choice
+        options:
+          - Quick
+          - Sanity
+          - Regression
+        default: Quick
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore test project
+        run: dotnet restore FunctionalTestCases/LeadCrm.Tests.csproj
+
+      - name: Run unit tests
+        run: dotnet test UnitTestCases/LeadCrm.UnitTests.csproj --no-restore
+
+      - name: Run selected test suite
+        run: dotnet test FunctionalTestCases/LeadCrm.Tests.csproj --no-restore -p:TestSuite=${{ github.event_name == 'workflow_dispatch' && inputs.suite || 'Quick' }}

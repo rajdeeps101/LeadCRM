@@ -1,0 +1,10 @@
+.DS_Store
+.vs/
+**/bin/
+**/obj/
+App_Data/
+.env
+.env.*
+secrets.json
+*.user
+*.suo
