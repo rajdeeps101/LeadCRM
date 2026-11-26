@@ -24,7 +24,7 @@ dotnet test FunctionalTestCases/LeadCrm.Tests.csproj -p:TestSuite=Sanity
 dotnet test FunctionalTestCases/LeadCrm.Tests.csproj -p:TestSuite=Regression
 ```
 
-These are functional integration tests. `Quick` runs the first two smoke tests, `Sanity` runs those plus core lead, agent, and image workflow tests, and `Regression` runs the full suite. Running `dotnet test FunctionalTestCases/LeadCrm.Tests.csproj` without a flag defaults to `Regression`. GitHub Actions runs `Quick` on every push and pull request; use the workflow's manual **Run workflow** option to choose a different suite. The suite uses isolated temporary storage and a fake Gemini HTTP response, so it does not call Gemini or require an API key. See [FunctionalTestCases/CRM-Test-Cases.md](./FunctionalTestCases/CRM-Test-Cases.md) for case coverage and UI-only cases that still require manual testing.
+These are functional integration tests. `Quick` runs the first two smoke tests, `Sanity` runs those plus core lead, agent, and image workflow tests, and `Regression` runs the full suite. Running `dotnet test FunctionalTestCases/LeadCrm.Tests.csproj` without a flag defaults to `Regression`. GitHub Actions runs Quick on branch pushes, then runs Sanity and requests Copilot review for the PR. The suite uses isolated temporary storage and a fake Gemini HTTP response, so it does not call Gemini or require an API key. See [FunctionalTestCases/CRM-Test-Cases.md](./FunctionalTestCases/CRM-Test-Cases.md) for case coverage and UI-only cases that still require manual testing.
 
 ## Unit tests
 
@@ -38,7 +38,7 @@ These tests exercise lead-readiness and document-review findings directly, witho
 
 ## Change gate
 
-Before editing files for a change, run the unit tests and Quick functional suite against the current code. If either baseline fails, stop and report the failure before editing. After making the change, run both suites again. GitHub Actions repeats these checks on pushes and pull requests. Configure the repository's branch protection to require the **CRM tests** check before merging; this repository-level setting cannot be enabled from the workflow file.
+For each change, start a new `feature/<change-slug>` branch from `main`, run unit and Quick functional tests before editing, add or update a functional test alongside behavior changes, and rerun the tests after editing. Pushing a feature branch runs unit + Quick checks, creates a PR, runs unit + Sanity checks, requests Copilot review, and queues auto-merge. The `main` branch requires a passing **CRM pipeline / verify** check and one approving review. Copilot approvals are disabled by default; enable **Allow Copilot to approve pull requests** and **Allow Copilot approvals to count toward merge requirements** in the repository's Copilot code review settings for fully automatic merges. Otherwise, a human approval is still required.
 
 ```sh
 dotnet test UnitTestCases/LeadCrm.UnitTests.csproj
